@@ -2,7 +2,7 @@
 #define NET_H
 
 // #include <stddef.h>
-// #include <stdint.h>
+#include <stdint.h>
 
 #ifndef IFNAMSZ
 #define IFNAMSZ 16
@@ -24,27 +24,39 @@
 #define NET_DEVICE_STATE(x) (NET_DEVICE_IS_UP(x) ? "UP" : "DOWN")
 
 struct net_device {
-    struct net_device* next;
+    struct net_device *next;
     unsigned int index;
     char name[IFNAMSZ];
-    uint16_t type;
-    uint16_t mtu;
-    uint16_t flags;
-    uint16_t hlen;
-    uint16_t alen;
+    uint16_t type;  // ネットワークデバイスの種類（NET_DEVICE_TYPE_*: DUMMY, LOOPBACK, ETHERNET）
+    uint16_t mtu;   // 最大送信データサイズ（Maximum Transmission Unit）
+    uint16_t flags; // ネットワークデバイスの特性と状態（NET_DEVICE_FLAG_*: UP, LOOPBACK, BROADCAST, P2P, NEED_ARP）
+    uint16_t hlen;  // ヘッダ長
+    uint16_t alen;  // アドレス長
     uint8_t addr[NET_DEVICE_ADDR_LEN];
     uint8_t broadcast[NET_DEVICE_ADDR_LEN];
+    struct net_device_ops *ops;
+    void *priv;
 };
 
-extern struct net_device* net_device_alloc(void);
-extern int net_device_register(struct net_device* dev);
+// 制御ルーチン
+struct net_device_ops {
+    // デバイスの起動ルーチン
+    int (*open)(struct net_device *dev);
+    int (*close)(struct net_device *dev);
+    int (*output)(struct net_device *dev, uint16_t type, const uint8_t *data, size_t len, const void *dst);
+};
+
+extern struct net_device *net_device_alloc(void);
+extern int net_device_register(struct net_device *dev);
 extern int net_device_output(
-    struct net_device* dev,
+    struct net_device *dev,
     uint16_t type,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t len,
-    const void* dst
+    const void *dst
 );
+
+extern int net_input(uint16_t type, const uint8_t *data, size_t len, struct net_device *dev);
 
 extern int net_init(void);
 extern int net_run(void);
